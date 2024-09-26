@@ -1,0 +1,36 @@
+// Implemented in rsas
+
+single_digit := [0-9]
+single_hex_digit := [0-9a-fA-F]
+identifier_start_char := [a-zA-Z_]
+identifier_continuation_char := [a-zA-Z0-9_]
+not_newline := [^\n]
+
+oneormore_digits := single_digit+
+identifier := identifier_start_char identifier_continuation_char+
+zms := ' '* // Zero or more space
+hex_literal := '-'? '0' 'x' single_hex_digit+
+
+string_literal_normal_char := [^\n\"\\]
+string_literal_charrep := '\' '\' | '\' '"' | '\' 'n' | string_literal_normal_char
+string_literal := '"' string_literal_charrep* '"'
+
+directive := '.' identifier
+directive_arg := hex_literal | string_literal | identifier
+directive_args := directive_arg zms (',' zms directive_arg)*
+directive_stmt := directive zms directive_args?
+
+register := '%' identifier
+immediate := "$" hex_literal
+address_immediate := "$" identifier
+indirect_register_expr := hex_literal? '(' zms register zms ')'
+operand := register | indirect_register_expr | immediate | address_immediate | identifier
+operands := operand zms (',' zms operand)*
+instruction_stmt := identifier zms operands?
+
+label := identifier ':'
+comment := '/' '/' not_newline*
+stmt := identifier_stmt | directive_stmt
+line := zms label? zms stmt? zms comment? '\n'
+file := line* zms
+
