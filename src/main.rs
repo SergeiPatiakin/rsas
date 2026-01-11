@@ -1176,16 +1176,63 @@ fn build_file_content(mut object_file: ObjectFile) -> Vec<u8> {
     content
 }
 
+struct RsasArgs {
+    infile: String,
+    outfile: Option<String>,
+}
+
+fn parse_rsas_args(args: &[String]) -> RsasArgs {
+    let mut infile: Option<String> = None;
+    let mut outfile: Option<String> = None;
+    let mut next_option: Option<String> = None;
+    for arg in args {
+        if arg.starts_with("-") {
+            if arg == "-o" {
+                next_option = Some(arg.clone());
+            } else {
+                panic!("Unknown option: {}", arg);
+            }
+        } else {
+            match next_option.as_deref() {
+                Some("-o") => {
+                    if outfile.is_some() {
+                        panic!("Repeated value for option: {}", arg);
+                    }
+                    outfile = Some(arg.clone());
+                    next_option = None;
+                }
+                None => {
+                    if infile.is_some() {
+                        panic!("Repeated value for input file");
+                    }
+                    infile = Some(arg.clone());
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+    if let Some(option) = next_option {
+        panic!("Missing value for option: {}", option);
+    }
+    if infile.is_none() {
+        panic!("Expected argument input file");
+    }
+    RsasArgs {
+        infile: infile.unwrap(),
+        outfile,
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    assert_eq!(args.len(), 2);
-    let file_path = &args[1];
-    let source = std::fs::read(file_path).unwrap();
+    let rsas_args = parse_rsas_args(&args[1..]);
+    let source = std::fs::read(&rsas_args.infile).unwrap();
     let intermediate_object_file = build_intermediate_object_file(&source[..]);
     let object_file = build_object_file(intermediate_object_file);
     let content = build_file_content(object_file);
+    let outfile = rsas_args.outfile.unwrap_or("a.out".into());
     // write to file
-    std::fs::write("a.out", content).unwrap();
+    std::fs::write(&outfile, content).unwrap();
 }
 
 #[derive(Debug, PartialEq)]
